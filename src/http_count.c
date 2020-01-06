@@ -16,18 +16,18 @@
 #define JHASH_GOLDEN_RATIO	0x9e3779b9
 #define __jhash_mix(a, b, c)\
 {\
-  a -= b; a -= c; a ^= (c>>13);\
-  b -= c; b -= a; b ^= (a<<8);\
-  c -= a; c -= b; c ^= (b>>13);\
-  a -= b; a -= c; a ^= (c>>12);\
-  b -= c; b -= a; b ^= (a<<16);\
-  c -= a; c -= b; c ^= (b>>5);\
-  a -= b; a -= c; a ^= (c>>3);\
-  b -= c; b -= a; b ^= (a<<10);\
-  c -= a; c -= b; c ^= (b>>15);\
+	  a -= b; a -= c; a ^= (c>>13);\
+	  b -= c; b -= a; b ^= (a<<8);\
+	  c -= a; c -= b; c ^= (b>>13);\
+	  a -= b; a -= c; a ^= (c>>12);\
+	  b -= c; b -= a; b ^= (a<<16);\
+	  c -= a; c -= b; c ^= (b>>5);\
+	  a -= b; a -= c; a ^= (c>>3);\
+	  b -= c; b -= a; b ^= (a<<10);\
+	  c -= a; c -= b; c ^= (b>>15);\
 }
 
-uint32_t g_topn = 0, g_log_level = 0, g_type = 0;
+int g_topn = 0, g_log_level = 0, g_type = 0;
 char g_statistics_type[MAX_STR_LEN]="";
 char g_http_count_log_path[MAX_STR_LEN]="";
 void *g_http_count_log_handler = NULL;
@@ -152,7 +152,6 @@ int http_count_statistics(char *buf, uint32_t len)
 {
 	uint32_t key = 0;
 	uint32_t buflen = 0;
-	int ret = 0;
 	struct http_count_node *node = NULL;
 	
 	buflen = MIN(len, (MAX_STR_LEN-1));
@@ -164,16 +163,14 @@ int http_count_statistics(char *buf, uint32_t len)
 	}
 	else
 	{
-		ret = add_hlist_node(key, buf, buflen);
+		add_hlist_node(key, buf, buflen);
 	}
 
-	return ret;
+	return 0;
 }
 
 char http_count_entry(stSessionInfo* session_info, void **param, int thread_seq, struct streaminfo *a_tcp, void *a_packet)
-{
-	int ret = 0;
-	
+{	
 	if(a_tcp->dir != DOUBLE_DIRECTION)
 		return 0;
 	
@@ -181,24 +178,24 @@ char http_count_entry(stSessionInfo* session_info, void **param, int thread_seq,
     {
     	case HTTP_HOST:
 			if(g_type == HTTP_TYPE)
-				ret = http_count_statistics(session_info->buf, session_info->buflen);
+				http_count_statistics(session_info->buf, session_info->buflen);
             break;
         case HTTP_USER_AGENT:
 			if(g_type == USER_AGENT_TYPE)
-            	ret = http_count_statistics(session_info->buf, session_info->buflen);
+          		http_count_statistics(session_info->buf, session_info->buflen);
             break;
         default:
             break;
     }
 	
-	return 0;//PROT_STATE_GIVEME
+	return PROT_STATE_GIVEME;
 }
 
 int http_check_readconf(const char* filename)
 {
-	MESA_load_profile_int_def(filename, "HTTP", "TOPN", (uint32_t *)(&g_topn), 5);
+	MESA_load_profile_int_def(filename, "HTTP", "TOPN", (int *)(&g_topn), 5);
     MESA_load_profile_string_nodef(filename, "HTTP", "TYPE", g_statistics_type, MAX_STR_LEN);
-	MESA_load_profile_int_def(filename, "HTTP", "LOG_LEVEL", (uint32_t *)(&g_log_level), 30);
+	MESA_load_profile_int_def(filename, "HTTP", "LOG_LEVEL", (int *)(&g_log_level), 30);
     MESA_load_profile_string_nodef(filename, "HTTP", "HTTP_COUNT_LOG_PATH", g_http_count_log_path, MAX_STR_LEN);
 
 	g_http_count_log_handler = MESA_create_runtime_log_handle(g_http_count_log_path, g_log_level);
@@ -208,15 +205,15 @@ int http_check_readconf(const char* filename)
 		MESA_handle_runtime_log(g_http_count_log_handler, RLOG_LV_FATAL, HTTP_COUNT_PLUGNAME, "get log handle error!");	
 		return -1;
 	}
-	if(!strncmp(g_statistics_type, "HOST", 4))
+	if(!strncmp(g_statistics_type, "Host", 4))
 		g_type = HTTP_TYPE;
-	else if(!strncmp(g_statistics_type, "USER_AGENT", 10))
+	else if(!strncmp(g_statistics_type, "User-Agent", 10))
 		g_type = USER_AGENT_TYPE;
 	else
 	{
 		g_type = TYPE_ERROR;
-		printf("http_check.so: statistics type error!\n");
-		MESA_handle_runtime_log(g_http_count_log_handler, RLOG_LV_FATAL, HTTP_COUNT_PLUGNAME, "statistics type error!");	
+		printf("http_check.so: get statistics type error!\n");
+		MESA_handle_runtime_log(g_http_count_log_handler, RLOG_LV_FATAL, HTTP_COUNT_PLUGNAME, "get statistics type error!");	
 		return -1;
 	}
     //printf("***v1***conf:topn:%d, key:%s(%d), log_level:%d, log_path:%s\n",g_topn, g_statistics_type, g_type, g_log_level, g_http_count_log_path);
@@ -317,22 +314,22 @@ void http_count_destory(void)
 	}
 	
 	if(g_type == HTTP_TYPE)
-		fprintf(fp, "%-100s	%s\n","host", "count");
+		fprintf(fp, "%-100s	%s\n","Host", "Count");
 	else if(g_type == USER_AGENT_TYPE)
-		fprintf(fp, "%-180s	%s\n","user agent", "count");
+		fprintf(fp, "%-180s	%s\n","User-Agent", "Count");
 #if 1
 	for(i = 0; i < PERSIST_HASH_SIZE; i++)//print_test
 	{
 		node = g_http_data_htable->hlist_head[i].next;
 		for(; node != NULL; node = node->next)
 		{
-			printf("hash_print:key:%d, data:%s, count:%d, hash_node:%d, all_node:%d\n",
+			printf("hash_print:key:%d, data:%s, count:%"PRIu64", hash_node:%"PRIu64", all_node:%"PRIu64"\n",
 				i, node->data, node->count, g_http_data_htable->hlist_head[i].count, g_http_data_htable->sum);	
 		}
 	}
 #endif
 
-	printf("***************************top%d****************************\n", g_topn);
+	printf("***************************top%d***************************\n", g_topn);
 	for(j = 0; j < g_topn; j++)
 	{
 		flag = 0;
@@ -356,13 +353,13 @@ void http_count_destory(void)
 		}
 		if(max_node && max_node->count)
 		{
-			printf("top%d: %s, count:%d\n",g_topn, max_node->data, max_node->count);
+			printf("top%d: %s, count:%"PRIu64"\n",g_topn, max_node->data, max_node->count);
 			MESA_handle_runtime_log(g_http_count_log_handler, RLOG_LV_DEBUG, HTTP_COUNT_PLUGNAME, 
 				"top%d: %s, count:%d\n", g_topn, max_node->data, max_node->count);
 			if(g_type == HTTP_TYPE)
-				fprintf(fp, "%-100s	%d\n",  max_node->data, max_node->count);
+				fprintf(fp, "%-100s	%"PRIu64"\n",  max_node->data, max_node->count);
 			else if(g_type == USER_AGENT_TYPE)
-				fprintf(fp, "%-180s	%d\n",  max_node->data, max_node->count);
+				fprintf(fp, "%-180s	%"PRIu64"\n",  max_node->data, max_node->count);
 			max_node->count = 0;
 		}
 	}
