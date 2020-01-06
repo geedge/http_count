@@ -6,14 +6,13 @@
 #include "../../../opt/MESA/include/MESA/MESA_handle_logger.h"
 #include "../../../opt/MESA/include/MESA/http.h"
 
-#define MAX_STR_LEN			256
-#define PERSIST_HASH_SIZE	512
-#define DOUBLE_DIRECTION	0x03
-#define	MIN(a,b)			((a)<(b)?(a):(b))
-#define HTTP_CHECK_CONFIG	"./plug/business/http_count/http_count.conf"
-#define BASIC_DIR "./plug/business/http_count/"
-#define HTTP_COUNT_PLUGNAME 		"http_count.so"
-#define JHASH_GOLDEN_RATIO	0x9e3779b9
+#define MAX_STR_LEN				256
+#define PERSIST_HASH_SIZE		512
+#define DOUBLE_DIRECTION		0x03
+#define HTTP_CHECK_CONFIG		"./plug/business/http_count/http_count.conf"
+#define BASIC_DIR 				"./plug/business/http_count/"
+#define HTTP_COUNT_PLUGNAME 	"http_count.so"
+#define JHASH_GOLDEN_RATIO		0x9e3779b9
 #define __jhash_mix(a, b, c)\
 {\
 	  a -= b; a -= c; a ^= (c>>13);\
@@ -42,8 +41,9 @@ enum statistics_type
 struct http_count_node
 {
 	struct http_count_node *next;
-	char data[MAX_STR_LEN];
+	//char data[MAX_STR_LEN];
 	uint64_t count;//统计命中次数
+	char *data;
 };
 
 struct http_data_htable
@@ -63,10 +63,17 @@ int add_hlist_node(uint32_t key, char *buf, uint32_t buflen)
 		MESA_handle_runtime_log(g_http_count_log_handler, RLOG_LV_FATAL, HTTP_COUNT_PLUGNAME, "malloc node failed!");
 		return -1;
 	}
+	node->data = malloc(buflen+1);
+	if(!node->data)
+	{
+		printf("http_check.so: malloc node->data failed\n");
+		MESA_handle_runtime_log(g_http_count_log_handler, RLOG_LV_FATAL, HTTP_COUNT_PLUGNAME, "malloc node->data failed!");
+		return -1;
+	}
 
-	memset(node, 0, sizeof(struct http_count_node));
 	strncpy(node->data, buf, buflen);
-	node->count++;//命中次数
+	node->data[buflen] = 0;
+	node->count = 1;//命中次数
 	node->next = g_http_data_htable->hlist_head[key].next;
 	g_http_data_htable->hlist_head[key].next = node;
 	g_http_data_htable->hlist_head[key].count++;//哈希链节点数
@@ -148,13 +155,11 @@ uint32_t get_hash_key(void *buf, uint32_t buflen)
 	return (jhash(buf, buflen, 0) % PERSIST_HASH_SIZE);
 }
 
-int http_count_statistics(char *buf, uint32_t len)
+int http_count_statistics(char *buf, uint32_t buflen)
 {
 	uint32_t key = 0;
-	uint32_t buflen = 0;
 	struct http_count_node *node = NULL;
 	
-	buflen = MIN(len, (MAX_STR_LEN-1));
 	key = get_hash_key(buf, buflen);
 	node = find_hlist_node(key, buf, buflen);
 	if(node)
@@ -281,6 +286,8 @@ void free_all(void)
 		{
 			head->next = free_node->next;
 			free_node->next = NULL;
+			free(free_node->data);
+			free_node->data = NULL;
 			free(free_node);
 			free_node = NULL;
 		}
