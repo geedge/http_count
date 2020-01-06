@@ -92,8 +92,7 @@ struct http_count_node * find_hlist_node(uint32_t key, char *buf, uint32_t bufle
 		if(!strncmp(node->data, buf, buflen))
 		{
 			return node;
-		}
-			
+		}		
 	}
 	
 	return NULL;
@@ -155,7 +154,7 @@ uint32_t get_hash_key(void *buf, uint32_t buflen)
 	return (jhash(buf, buflen, 0) % PERSIST_HASH_SIZE);
 }
 
-int http_count_statistics(char *buf, uint32_t buflen)
+void http_count_statistics(char *buf, uint32_t buflen)
 {
 	uint32_t key = 0;
 	struct http_count_node *node = NULL;
@@ -171,13 +170,13 @@ int http_count_statistics(char *buf, uint32_t buflen)
 		add_hlist_node(key, buf, buflen);
 	}
 
-	return 0;
+	return;
 }
 
 char http_count_entry(stSessionInfo* session_info, void **param, int thread_seq, struct streaminfo *a_tcp, void *a_packet)
 {	
 	if(a_tcp->dir != DOUBLE_DIRECTION)
-		return 0;
+		return PROT_STATE_GIVEME;
 	
     switch(session_info->prot_flag)
     {
@@ -378,5 +377,5 @@ OUT:
 		MESA_destroy_runtime_log_handle(g_http_count_log_handler);
 	free_all();
 		
-    return ;
+    return;
 }
