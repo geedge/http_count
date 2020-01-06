@@ -15,15 +15,15 @@
 #define JHASH_GOLDEN_RATIO		0x9e3779b9
 #define __jhash_mix(a, b, c)\
 {\
-	  a -= b; a -= c; a ^= (c>>13);\
-	  b -= c; b -= a; b ^= (a<<8);\
-	  c -= a; c -= b; c ^= (b>>13);\
-	  a -= b; a -= c; a ^= (c>>12);\
-	  b -= c; b -= a; b ^= (a<<16);\
-	  c -= a; c -= b; c ^= (b>>5);\
-	  a -= b; a -= c; a ^= (c>>3);\
-	  b -= c; b -= a; b ^= (a<<10);\
-	  c -= a; c -= b; c ^= (b>>15);\
+	a -= b; a -= c; a ^= (c>>13);\
+	b -= c; b -= a; b ^= (a<<8);\
+	c -= a; c -= b; c ^= (b>>13);\
+	a -= b; a -= c; a ^= (c>>12);\
+	b -= c; b -= a; b ^= (a<<16);\
+	c -= a; c -= b; c ^= (b>>5);\
+	a -= b; a -= c; a ^= (c>>3);\
+	b -= c; b -= a; b ^= (a<<10);\
+	c -= a; c -= b; c ^= (b>>15);\
 }
 
 int g_topn = 0, g_log_level = 0, g_type = 0;
@@ -42,8 +42,8 @@ struct http_count_node
 {
 	struct http_count_node *next;
 	//char data[MAX_STR_LEN];
-	uint64_t count;//统计命中次数
-	char *data;
+	uint64_t count;//统计次数
+	char *data;//存储host/useragent字段
 };
 
 struct http_data_htable
@@ -324,7 +324,7 @@ void http_count_destory(void)
 		fprintf(fp, "%-100s	%s\n","Host", "Count");
 	else if(g_type == USER_AGENT_TYPE)
 		fprintf(fp, "%-180s	%s\n","User-Agent", "Count");
-#if 1
+#if 0
 	for(i = 0; i < PERSIST_HASH_SIZE; i++)//print_test
 	{
 		node = g_http_data_htable->hlist_head[i].next;
@@ -336,7 +336,7 @@ void http_count_destory(void)
 	}
 #endif
 
-	printf("***************************top%d***************************\n", g_topn);
+	//printf("***************************top%d***************************\n", g_topn);
 	for(j = 0; j < g_topn; j++)
 	{
 		flag = 0;
@@ -360,7 +360,7 @@ void http_count_destory(void)
 		}
 		if(max_node && max_node->count)
 		{
-			printf("top%d: %s, count:%"PRIu64"\n",g_topn, max_node->data, max_node->count);
+			//printf("top%d: %s, count:%"PRIu64"\n",g_topn, max_node->data, max_node->count);
 			MESA_handle_runtime_log(g_http_count_log_handler, RLOG_LV_DEBUG, HTTP_COUNT_PLUGNAME, 
 				"top%d: %s, count:%d\n", g_topn, max_node->data, max_node->count);
 			if(g_type == HTTP_TYPE)
