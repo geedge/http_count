@@ -1,0 +1,9 @@
+[PLUGINFO]
+PLUGNAME=HTTP_COUNT
+SO_PATH=./plug/business/http_count/src/http_count.so
+INIT_FUNC=http_count_init
+DESTROY_FUNC=http_count_destory
+
+[HTTP]
+FUNC_FLAG=ALL
+FUNC_NAME=http_count_entry
